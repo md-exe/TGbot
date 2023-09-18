@@ -54,53 +54,44 @@ namespace TgBot
                 else
                 {
                     // Закрытие всякого
-                    if (message.Text.ToLower().StartsWith("/getdown"))
+                    if (message.Text.ToLower().StartsWith("/getdown "))
                     {
-                        string[] commandArgs = message.Text.Split(' ');
+                        // Разделяем сообщение на команду и аргументы
+                        string[] commandParts = message.Text.Split('|');
 
-                        if (commandArgs.Length < 2)
+                        if (commandParts.Length != 2)
                         {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Укажите название процесса после команды.");
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Команда должна иметь формат '/getdown <имя компьютера> | <часть имени процесса>'.");
                             return;
                         }
 
-                        // Проверка на то, мой ли это аккаунт
-                        string processNameInput = commandArgs[1].ToLower();
-                        if (message.Chat.Id != 455077378)
+                        string computerName = commandParts[0].Trim().Substring("/getdown ".Length).ToLower();
+                        string partialProcessName = commandParts[1].Trim().ToLower();
+
+                        if (Environment.MachineName.ToLower() == computerName)
                         {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Нет.");
+                            Process[] allProcesses = Process.GetProcesses();
+
+                            bool processFound = false;
+
+                            foreach (var process in allProcesses)
+                            {
+                                if (process.ProcessName.ToLower().Contains(partialProcessName))
+                                {
+                                    process.Kill();
+                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Процесс '{process.ProcessName}' успешно закрыт.");
+                                    processFound = true;
+                                }
+                            }
+
+                            if (!processFound)
+                            {
+                                await botClient.SendTextMessageAsync(message.Chat.Id, $"Не найден процесс с частичным совпадением '{partialProcessName}'.");
+                            }
                         }
                         else
                         {
-                            // Предохранитель рабочего ПК
-                            if (Environment.UserName != "404-prep")
-                            {
-                                await botClient.SendTextMessageAsync(message.Chat.Id, "Это не рабочий ПК.");
-                            }
-                            else
-                            {
-                                var processes = Process.GetProcesses();
-
-                                bool processFound = false;
-
-                                foreach (var process in processes)
-                                {
-                                    if (process.ProcessName.ToLower().Contains(processNameInput))
-                                    {
-                                        process.Kill();
-                                        processFound = true;
-                                    }
-                                }
-
-                                if (processFound)
-                                {
-                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Процессы, содержащие '{processNameInput}', успешно закрыты.");
-                                }
-                                else
-                                {
-                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Не найдены процессы, содержащие '{processNameInput}'.");
-                                }
-                            }
+                            await botClient.SendTextMessageAsync(message.Chat.Id, $"Команда выполнена на компьютере '{computerName}'.");
                         }
                     }
                     // Сообщения
