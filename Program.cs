@@ -9,6 +9,7 @@ using Telegram.Bot.Types;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Windows;
+using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace TgBot
 {
@@ -46,63 +47,82 @@ namespace TgBot
             var message = update.Message;
             if (message.Text != null)
             {
-                Console.WriteLine($"{message.Chat.Username}   |   {message.Text}");
-                if (message.Text.Contains("О?") ^ message.Text.Contains("o?") ^ message.Text.Contains("O?") ^ message.Text.Contains("о?"))
+                if (message.Chat.Id != 455077378)
                 {
-                    await botClient.SendTextMessageAsync(message.Chat.Id, "O!");
-                    return;
+                    await botClient.SendTextMessageAsync(message.Chat.Id, "Нет.");
                 }
-                if (message.Text.Contains("o/") ^ message.Text.Contains("O/") ^ message.Text.Contains("о/") ^ message.Text.Contains("O/"))
+                else
                 {
-                    await botClient.SendTextMessageAsync(message.Chat.Id, "o/");
-                    return;
-                }
-                if (message.Text.ToLower().Contains("/notepad") && (message.Chat.Id == 455077378))
-                {
-                    Process.Start("notepad.exe");
-                    await botClient.SendTextMessageAsync(message.Chat.Id, "Блокнот открыт.");
-                    return;
-                }
-                if (message.Text.ToLower().Contains("/getdown"))
-                {
-                    if (message.Chat.Id != 455077378)
+                    // Закрытие всякого
+                    if (message.Text.ToLower().StartsWith("/getdown"))
                     {
-                        await botClient.SendTextMessageAsync(message.Chat.Id, "Нет.");
-                    }
-                    else
-                    {
-                        if (Environment.UserName != "404-prep")
+                        string[] commandArgs = message.Text.Split(' ');
+
+                        if (commandArgs.Length < 2)
                         {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Это не рабочий ПК.");
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Укажите название процесса после команды.");
+                            return;
+                        }
+
+                        // Проверка на то, мой ли это аккаунт
+                        string processNameInput = commandArgs[1].ToLower();
+                        if (message.Chat.Id != 455077378)
+                        {
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Нет.");
                         }
                         else
                         {
-                            foreach (var process in Process.GetProcessesByName("spotify"))
+                            // Предохранитель рабочего ПК
+                            if (Environment.UserName != "404-prep")
                             {
-                                process.Kill();
+                                await botClient.SendTextMessageAsync(message.Chat.Id, "Это не рабочий ПК.");
                             }
-                            foreach (var process in Process.GetProcessesByName("steam"))
+                            else
                             {
-                                process.Kill();
+                                var processes = Process.GetProcesses();
+
+                                bool processFound = false;
+
+                                foreach (var process in processes)
+                                {
+                                    if (process.ProcessName.ToLower().Contains(processNameInput))
+                                    {
+                                        process.Kill();
+                                        processFound = true;
+                                    }
+                                }
+
+                                if (processFound)
+                                {
+                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Процессы, содержащие '{processNameInput}', успешно закрыты.");
+                                }
+                                else
+                                {
+                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Не найдены процессы, содержащие '{processNameInput}'.");
+                                }
                             }
-                            foreach (var process in Process.GetProcessesByName("discord"))
-                            {
-                                process.Kill();
-                            }
-                            foreach (var process in Process.GetProcessesByName("discord-portable"))
-                            {
-                                process.Kill();
-                            }
-                            foreach (var process in Process.GetProcessesByName("opera"))
-                            {
-                                process.Kill();
-                            }
-                            foreach (var process in Process.GetProcessesByName("longworkday"))
-                            {
-                                process.Kill();
-                            }
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Sweet home.");
                         }
+                    }
+                    // Сообщения
+                    if (message.Text.StartsWith("/message "))
+                    {
+                        string commandText = message.Text.Substring("/message ".Length);
+                        string[] parts = commandText.Split('|');
+                        if (parts.Length < 2)
+                        {
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Необходимо указать и текст сообщения, и название окна.");
+                            return;
+                        }
+                        string messageText = parts[0].Trim();
+                        string windowTitle = parts[1].Trim();
+                        if (string.IsNullOrWhiteSpace(messageText) || string.IsNullOrWhiteSpace(windowTitle))
+                        {
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Текст сообщения и название окна не могут быть пустыми.");
+                            return;
+                        }
+                        MessageBox.Show(messageText, windowTitle);
+                        // await botClient.SendTextMessageAsync(message.Chat.Id, "Сообщение с заголовком: " + windowTitle + " и текстом: " + messageText + " было отправлено.");
+                        await botClient.SendTextMessageAsync(message.Chat.Id, $"Сообщение с заголовком: '{windowTitle}' и текстом '{messageText}' было отправлено.");
                     }
                 }
             }
